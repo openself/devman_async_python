@@ -2,10 +2,14 @@ import random
 import time
 import curses
 import asyncio
-
+from curses_tools import draw_frame, get_frame_size
+from os import path
 
 TIC_TIMEOUT = 0.1
 STAR_SYMBOLS = ["+", "*", ".", ":"]
+MAX_STARS = 100
+ANIMATON_DATA_FOLDER = './animation_frames'
+
 
 def draw(canvas):
     canvas.border()
@@ -17,12 +21,15 @@ def draw(canvas):
 
     coroutines = list()
 
-    for star in range(100):
+    for star in range(MAX_STARS):
         star = blink(canvas, random.choice(rows), random.choice(columns),
                      symbol=random.choice(STAR_SYMBOLS))
 
         coroutines.append(star)
 
+    rocket_frames = rocket_animation_data()
+
+    coroutines.append(animate_spaceship(canvas, max_row, max_column, rocket_frames))
     coroutines.append(fire(canvas, max_row // 2, max_column // 2))
 
     while True:
@@ -34,7 +41,6 @@ def draw(canvas):
             canvas.refresh()
 
         time.sleep(TIC_TIMEOUT)
-
 
 
 async def blink(canvas, row, column, symbol='*'):
@@ -88,6 +94,32 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         column += columns_speed
 
     canvas.border()
+
+
+async def animate_spaceship(canvas, max_row, max_column, rocket_frames):
+    rocket_rows, rocket_cols = get_frame_size(rocket_frames[0])
+
+    row = (max_row - rocket_rows) // 2
+    col = (max_column - rocket_cols) // 2 + 1
+
+    while True:
+        for frame in rocket_frames:
+            draw_frame(canvas, start_row=row, start_column=col, text=frame)
+            canvas.refresh()
+            await asyncio.sleep(0)
+            draw_frame(canvas, row, col, text=frame, negative=True)
+
+
+def read_frame(fname):
+    with open(fname) as hdlr:
+        return hdlr.read()
+
+
+def rocket_animation_data():
+    frames = list()
+    frames.append(read_frame(path.join(ANIMATON_DATA_FOLDER, 'rocket_frame_1.txt')))
+    frames.append(read_frame(path.join(ANIMATON_DATA_FOLDER, 'rocket_frame_2.txt')))
+    return frames
 
 
 if __name__ == '__main__':
