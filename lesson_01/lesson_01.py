@@ -2,7 +2,7 @@ import random
 import time
 import curses
 import asyncio
-from curses_tools import draw_frame, get_frame_size
+from curses_tools import draw_frame, get_frame_size, read_controls
 from os import path
 
 TIC_TIMEOUT = 0.1
@@ -12,6 +12,7 @@ ANIMATON_DATA_FOLDER = './animation_frames'
 
 
 def draw(canvas):
+    canvas.nodelay(True)
     canvas.border()
     curses.curs_set(False)
 
@@ -36,9 +37,12 @@ def draw(canvas):
         for coroutine in coroutines:
             try:
                 coroutine.send(None)
+                canvas.refresh()
             except StopIteration:
-                del coroutines[-1]
-            canvas.refresh()
+                coroutines.remove(coroutine)
+
+            if len(coroutines) == 0:
+                break
 
         time.sleep(TIC_TIMEOUT)
 
@@ -96,6 +100,18 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     canvas.border()
 
 
+def new_rocket_position(row, col, row_delta, col_delta, max_row, max_column,
+                         rocket_rows, rocket_cols):
+    new_row = row + row_delta
+    new_col = col + col_delta
+    if (new_row < 2 or new_col < 2
+        or new_row > (max_row - rocket_rows - 2)
+        or new_col > (max_column - rocket_cols - 2)):
+        return row, col
+
+    return new_row, new_col
+
+
 async def animate_spaceship(canvas, max_row, max_column, rocket_frames):
     rocket_rows, rocket_cols = get_frame_size(rocket_frames[0])
 
@@ -103,6 +119,11 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_frames):
     col = (max_column - rocket_cols) // 2 + 1
 
     while True:
+        row_delta, col_delta, is_space_pressed = read_controls(canvas)
+        row, col = new_rocket_position(row=row, col=col,
+                             row_delta=row_delta, col_delta=col_delta,
+                             max_row=max_row, max_column=max_column,
+                             rocket_rows=rocket_rows, rocket_cols=rocket_cols)
         for frame in rocket_frames:
             draw_frame(canvas, start_row=row, start_column=col, text=frame)
             canvas.refresh()
