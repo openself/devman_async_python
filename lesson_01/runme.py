@@ -16,19 +16,19 @@ def draw(canvas):
     canvas.border()
     curses.curs_set(False)
 
-    (max_row, max_column) = canvas.getmaxyx()
-    columns = [x for x in range(1, max_column - 1)]
-    rows = [y for y in range(1, max_row - 1)]
+    max_row, max_column = canvas.getmaxyx()
 
     coroutines = list()
 
     for star in range(MAX_STARS):
-        star = blink(canvas, random.choice(rows), random.choice(columns),
+        star = blink(canvas,
+                     random.randint(2, max_row - 2),
+                     random.randint(2, max_column - 2),
                      symbol=random.choice(STAR_SYMBOLS))
 
         coroutines.append(star)
 
-    rocket_frames = rocket_animation_data()
+    rocket_frames = get_rocket_animation_data()
 
     coroutines.append(animate_spaceship(canvas, max_row, max_column, rocket_frames))
     coroutines.append(fire(canvas, max_row // 2, max_column // 2))
@@ -40,9 +40,6 @@ def draw(canvas):
                 canvas.refresh()
             except StopIteration:
                 coroutines.remove(coroutine)
-
-            if len(coroutines) == 0:
-                break
 
         time.sleep(TIC_TIMEOUT)
 
@@ -100,14 +97,16 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     canvas.border()
 
 
-def new_rocket_position(row, col, row_delta, col_delta, max_row, max_column,
-                         rocket_rows, rocket_cols):
+def get_rocket_position(row, col, row_delta, col_delta, max_row, max_column,
+                        rocket_rows, rocket_cols):
     new_row = row + row_delta
     new_col = col + col_delta
-    if (new_row < 2 or new_col < 2
-        or new_row > (max_row - rocket_rows - 2)
-        or new_col > (max_column - rocket_cols - 2)):
-        return row, col
+
+    if new_row < 2 or new_row > (max_row - rocket_rows - 2):
+        new_row = row
+
+    if new_col < 2 or new_col > (max_column - rocket_cols - 2):
+        new_col = col
 
     return new_row, new_col
 
@@ -120,10 +119,10 @@ async def animate_spaceship(canvas, max_row, max_column, rocket_frames):
 
     while True:
         row_delta, col_delta, is_space_pressed = read_controls(canvas)
-        row, col = new_rocket_position(row=row, col=col,
-                             row_delta=row_delta, col_delta=col_delta,
-                             max_row=max_row, max_column=max_column,
-                             rocket_rows=rocket_rows, rocket_cols=rocket_cols)
+        row, col = get_rocket_position(row=row, col=col,
+                                       row_delta=row_delta, col_delta=col_delta,
+                                       max_row=max_row, max_column=max_column,
+                                       rocket_rows=rocket_rows, rocket_cols=rocket_cols)
         for frame in rocket_frames:
             draw_frame(canvas, start_row=row, start_column=col, text=frame)
             canvas.refresh()
@@ -136,14 +135,17 @@ def read_frame(fname):
         return hdlr.read()
 
 
-def rocket_animation_data():
-    frames = list()
-    frames.append(read_frame(path.join(ANIMATON_DATA_FOLDER, 'rocket_frame_1.txt')))
-    frames.append(read_frame(path.join(ANIMATON_DATA_FOLDER, 'rocket_frame_2.txt')))
-    return frames
+def get_rocket_animation_data():
+    return [
+        read_frame(path.join(ANIMATON_DATA_FOLDER, 'rocket_frame_1.txt')),
+        read_frame(path.join(ANIMATON_DATA_FOLDER, 'rocket_frame_2.txt'))
+    ]
 
 
-if __name__ == '__main__':
+def main():
     curses.update_lines_cols()
     curses.wrapper(draw)
 
+
+if __name__ == '__main__':
+    main()
