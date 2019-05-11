@@ -276,7 +276,7 @@ async def fly_garbage(canvas, column, garbage_frame):
 
 
 def animate_years():
-    async def years_counter(max_row, max_column):
+    async def get_years_counter(max_row, max_column):
         global year
         while True:
             message = PHRASES.get(year, '')
@@ -290,4 +290,4 @@ def animate_years():
             year += 1
 
     max_row, max_column = global_state.canvas_text.getmaxyx()
-    global_state.coroutines.append(years_counter(max_row, max_column))
+    global_state.coroutines.append(get_years_counter(max_row, max_column))
